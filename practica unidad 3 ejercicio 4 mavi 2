@@ -1,1 +1,98 @@
+#include <iostream>
+#include <Box2D/Box2D.h>
+#include <SDL2/SDL.h>
+
+const float32 WORLD_WIDTH = 100.0f;
+const float32 WORLD_HEIGHT = 100.0f;
+const float32 SQUARE_SIZE = 5.0f;
+const float32 FORCE_AMOUNT = 50.0f;
+
+int main(int argc, char* argv[]) {
+    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+        std::cerr << "SDL_Init Error: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+
+    SDL_Window* window = SDL_CreateWindow("Cuadrado Movido por Fuerza",
+                                          100, 100, 800, 600, SDL_WINDOW_SHOWN);
+    if (window == nullptr) {
+        std::cerr << "SDL_CreateWindow Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    if (renderer == nullptr) {
+        SDL_DestroyWindow(window);
+        std::cerr << "SDL_CreateRenderer Error: " << SDL_GetError() << std::endl;
+        SDL_Quit();
+        return 1;
+    }
+
+    b2Vec2 gravity(0.0f, 0.0f);
+    b2World world(gravity);
+
+    b2BodyDef squareBodyDef;
+    squareBodyDef.type = b2_dynamicBody;
+    squareBodyDef.position.Set(WORLD_WIDTH / 2.0f, WORLD_HEIGHT / 2.0f);
+    b2Body* squareBody = world.CreateBody(&squareBodyDef);
+
+    b2PolygonShape squareShape;
+    squareShape.SetAsBox(SQUARE_SIZE / 2.0f, SQUARE_SIZE / 2.0f);
+
+    b2FixtureDef fixtureDef;
+    fixtureDef.shape = &squareShape;
+    fixtureDef.density = 1.0f;
+    fixtureDef.friction = 0.3f;
+    fixtureDef.restitution = 0.5f;
+    squareBody->CreateFixture(&fixtureDef);
+
+    bool quit = false;
+    SDL_Event e;
+
+    while (!quit) {
+        while (SDL_PollEvent(&e) != 0) {
+            if (e.type == SDL_QUIT) {
+                quit = true;
+            } else if (e.type == SDL_KEYDOWN) {
+                switch (e.key.keysym.sym) {
+                    case SDLK_UP:
+                        squareBody->ApplyForceToCenter(b2Vec2(0, FORCE_AMOUNT), true);
+                        break;
+                    case SDLK_DOWN:
+                        squareBody->ApplyForceToCenter(b2Vec2(0, -FORCE_AMOUNT), true);
+                        break;
+                    case SDLK_LEFT:
+                        squareBody->ApplyForceToCenter(b2Vec2(-FORCE_AMOUNT, 0), true);
+                        break;
+                    case SDLK_RIGHT:
+                        squareBody->ApplyForceToCenter(b2Vec2(FORCE_AMOUNT, 0), true);
+                        break;
+                }
+            }
+        }
+
+        world.Step(1.0f / 60.0f, 6, 2);
+
+        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+        SDL_RenderClear(renderer);
+
+        b2Vec2 position = squareBody->GetPosition();
+        float32 angle = squareBody->GetAngle();
+
+        SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+        SDL_Rect squareRect = { (int)(position.x * 800.0f / WORLD_WIDTH) - (int)(SQUARE_SIZE / 2),
+                                (int)(600 - position.y * 600.0f / WORLD_HEIGHT) - (int)(SQUARE_SIZE / 2),
+                                (int)SQUARE_SIZE, (int)SQUARE_SIZE };
+        SDL_RenderFillRect(renderer, &squareRect);
+
+        SDL_RenderPresent(renderer);
+    }
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    return 0;
+}
 
